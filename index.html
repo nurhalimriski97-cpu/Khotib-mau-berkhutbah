@@ -1,0 +1,845 @@
+Ini file index.html berisi gamifikasi pembelajaran wudhu untuk pemula, dengan kuis 10 soal, 6 rukun interaktif, dan badge.
+```html
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#04121c" />
+<title>Wudhu Quest — Gamifikasi Khutbah Jum'at</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    font-family:'Segoe UI',system-ui,-apple-system,Roboto,sans-serif;
+    background:radial-gradient(circle at 50% 0%,#0c2d44 0%,#06131f 55%,#020a11 100%);
+    color:#eaf6ff;min-height:100dvh;overflow-x:hidden;
+  }
+  #gl{position:fixed;inset:0;width:100%;height:100%;z-index:0;display:block;pointer-events:none;}
+  .vignette{position:fixed;inset:0;z-index:1;pointer-events:none;
+    background:radial-gradient(circle at 50% 42%,rgba(0,0,0,0) 38%,rgba(0,0,0,.6) 100%);}
+
+  #app{position:relative;z-index:2;max-width:430px;margin:0 auto;min-height:100dvh;
+    padding:12px 14px calc(22px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:12px;}
+
+  /* ---------- HUD ---------- */
+  .hud{display:flex;flex-direction:column;gap:8px;}
+  .hud-top{display:flex;align-items:center;justify-content:space-between;}
+  .brand{font-weight:800;font-size:15px;letter-spacing:.3px;display:flex;align-items:center;gap:7px;color:#bdeaff;}
+  .brand .logo{filter:drop-shadow(0 0 8px rgba(110,220,255,.7));}
+  .ghost-mini{background:rgba(255,255,255,.07);border:1px solid rgba(140,220,255,.25);color:#9fd8ff;
+    border-radius:10px;padding:5px 10px;font-size:13px;font-weight:700;}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;}
+  .chip{width:26px;height:26px;border-radius:9px;display:grid;place-items:center;font-size:11px;font-weight:800;
+    background:rgba(255,255,255,.06);border:1px solid rgba(140,220,255,.18);color:#6fa8c9;transition:.3s;}
+  .chip.on{background:linear-gradient(135deg,#28e0a8,#12a3ff);color:#04202c;border-color:transparent;
+    box-shadow:0 0 14px rgba(60,220,190,.55);}
+
+  /* ---------- Screens ---------- */
+  .screen{display:none;}
+  .screen.active{display:flex;flex-direction:column;gap:12px;animation:fade .35s ease;}
+  @keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+  .card{
+    background:rgba(255,255,255,.055);border:1px solid rgba(140,220,255,.18);
+    border-radius:22px;padding:18px 16px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    box-shadow:0 18px 40px rgba(0,0,0,.35);
+  }
+  .card.center{text-align:center;}
+
+  h1{margin:6px 0 4px;font-size:26px;line-height:1.15;
+     background:linear-gradient(90deg,#8ff0ff,#39b6ff 60%,#7cffd8);
+     -webkit-background-clip:text;background-clip:text;color:transparent;}
+  h2{margin:0 0 6px;font-size:19px;line-height:1.25;color:#dff4ff;}
+  .sub{margin:0 0 14px;font-size:13px;color:#8fbdd6;line-height:1.5;}
+  .note{font-size:12px;color:#ffd28a;background:rgba(255,190,80,.09);border:1px dashed rgba(255,190,80,.35);
+    padding:10px 12px;border-radius:12px;line-height:1.5;margin:12px 0 14px;}
+
+  .hero-icon{font-size:46px;text-align:center;filter:drop-shadow(0 0 18px rgba(90,220,255,.8));animation:bob 2.6s ease-in-out infinite;}
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+
+  .steps{display:flex;flex-direction:column;gap:8px;margin-bottom:4px;}
+  .step{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:#bfe3f5;line-height:1.45;
+    background:rgba(255,255,255,.04);padding:9px 11px;border-radius:12px;border:1px solid rgba(140,220,255,.12);}
+  .step b{flex:0 0 20px;height:20px;border-radius:50%;background:linear-gradient(135deg,#2bd6ff,#1a7fd4);
+    color:#031a26;display:grid;place-items:center;font-size:11px;}
+
+  /* ---------- Buttons ---------- */
+  .btn{width:100%;border:none;border-radius:15px;padding:14px;font-size:15px;font-weight:800;
+    letter-spacing:.2px;cursor:pointer;transition:transform .12s,box-shadow .2s,opacity .2s;font-family:inherit;}
+  .btn:active{transform:scale(.975);}
+  .btn.primary{background:linear-gradient(135deg,#2fe0c0,#1a8cff);color:#02171f;
+    box-shadow:0 10px 26px rgba(30,160,220,.4);}
+  .btn.ghost{background:rgba(255,255,255,.06);color:#a9dcf5;border:1px solid rgba(140,220,255,.25);}
+  .btn.warn{background:linear-gradient(135deg,#ffb347,#ff6b6b);color:#2b0d00;
+    box-shadow:0 10px 26px rgba(255,120,90,.35);}
+  .btn+.btn{margin-top:9px;}
+
+  /* ---------- Pills / progress ---------- */
+  .q-head{display:flex;justify-content:space-between;gap:8px;margin-bottom:10px;}
+  .pill{font-size:11px;font-weight:700;color:#8fd0ee;background:rgba(255,255,255,.06);
+    border:1px solid rgba(140,220,255,.18);padding:5px 10px;border-radius:999px;}
+  .pill b{color:#7ff0d4;}
+  .progress{height:8px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden;margin-bottom:14px;}
+  .progress i{display:block;height:100%;width:0;border-radius:99px;
+    background:linear-gradient(90deg,#2fe0c0,#1a8cff);transition:width .45s cubic-bezier(.3,1,.5,1);
+    box-shadow:0 0 14px rgba(60,220,255,.6);}
+
+  .q-text{font-size:16px;line-height:1.5;font-weight:700;color:#e8f8ff;margin:0 0 14px;}
+  .perintah{font-size:15px;line-height:1.5;font-weight:700;color:#e8f8ff;margin:0 0 10px;}
+  .prog-line{font-size:11.5px;color:#7ec8e8;font-weight:700;margin-bottom:10px;min-height:14px;letter-spacing:.2px;}
+
+  /* ---------- Options ---------- */
+  .options{display:flex;flex-direction:column;gap:9px;}
+  .opt{width:100%;text-align:left;padding:13px 15px;border-radius:15px;font-family:inherit;
+    background:rgba(255,255,255,.06);border:1px solid rgba(140,220,255,.2);
+    color:#e6f6ff;font-size:14px;font-weight:600;line-height:1.4;cursor:pointer;
+    transition:transform .12s,background .2s,border-color .2s;}
+  .opt:active{transform:scale(.98);}
+  .opt.benar{background:rgba(46,220,150,.22);border-color:#2edc96;color:#c8ffe9;}
+  .opt.salah{background:rgba(255,80,90,.2);border-color:#ff5a64;color:#ffd4d6;}
+
+  /* ---------- Feedback ---------- */
+  .feedback{margin-top:12px;}
+  .fb{font-size:13px;line-height:1.5;padding:11px 13px;border-radius:14px;font-weight:600;}
+  .fb.ok{background:rgba(46,220,150,.14);border:1px solid rgba(46,220,150,.45);color:#a9ffdd;}
+  .fb.bad{background:rgba(255,80,90,.13);border:1px solid rgba(255,90,100,.45);color:#ffc9cd;}
+  .fb small{display:block;margin-top:5px;font-weight:500;opacity:.85;line-height:1.45;}
+  .info{margin:10px 0 0;font-size:12px;color:#8fc4dd;line-height:1.55;
+    border-left:3px solid rgba(90,220,255,.5);padding-left:10px;}
+
+  /* ---------- Body map ---------- */
+  .body-map{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:4px;}
+  .part{grid-column:span 1;background:rgba(255,255,255,.055);border:1px solid rgba(120,220,255,.22);
+    border-radius:16px;padding:12px 6px;color:#cfefff;font-size:12.5px;font-weight:700;font-family:inherit;
+    display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;
+    transition:transform .12s,background .2s,box-shadow .2s,border-color .2s;}
+  .part.wide{grid-column:span 2;}
+  .part .emo{font-size:26px;line-height:1;}
+  .part:active{transform:scale(.95);}
+  .part.hit{background:rgba(80,220,255,.3);border-color:#6fe3ff;box-shadow:0 0 20px rgba(80,220,255,.55);}
+  .part.ok{background:rgba(60,255,170,.2);border-color:rgba(60,255,170,.65);}
+  .part.wrong{background:rgba(255,80,90,.28);border-color:#ff5a64;animation:shake .4s;}
+  @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+
+  /* ---------- Doa ---------- */
+  .arab{font-size:20px;line-height:2.1;text-align:right;direction:rtl;color:#d8f4ff;margin:8px 0 14px;
+    font-family:'Traditional Arabic','Amiri','Segoe UI',serif;}
+  .latin{font-size:13px;line-height:1.7;font-style:italic;color:#9fe3c9;margin:0 0 10px;}
+  .arti{font-size:12.5px;line-height:1.65;color:#8fbdd6;margin:0 0 16px;}
+
+  /* ---------- Badge ---------- */
+  .badge-big{width:112px;height:112px;border-radius:50%;display:grid;place-items:center;font-size:52px;margin:4px auto 14px;
+    background:radial-gradient(circle at 35% 28%,#8ff4ff,#1a7fd4 55%,#0a3660);
+    box-shadow:0 0 44px rgba(90,220,255,.65),inset 0 0 22px rgba(255,255,255,.35);
+    animation:pop .65s cubic-bezier(.2,1.5,.5,1),glow 2.6s ease-in-out infinite .7s;}
+  @keyframes pop{0%{transform:scale(.3);opacity:0}100%{transform:scale(1);opacity:1}}
+  @keyframes glow{0%,100%{box-shadow:0 0 34px rgba(90,220,255,.5),inset 0 0 22px rgba(255,255,255,.35)}
+                  50%{box-shadow:0 0 58px rgba(120,240,255,.9),inset 0 0 26px rgba(255,255,255,.5)}}
+  .badge-name{font-size:14px;font-weight:900;letter-spacing:.6px;line-height:1.5;
+    background:linear-gradient(90deg,#8ff0ff,#7cffd8);-webkit-background-clip:text;background-clip:text;color:transparent;
+    margin:6px 0 14px;}
+  .badge-name small{font-size:11px;letter-spacing:.3px;font-weight:700;}
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:6px 0 16px;}
+  .stat{background:rgba(255,255,255,.05);border:1px solid rgba(140,220,255,.15);border-radius:14px;padding:10px 6px;}
+  .stat b{display:block;font-size:20px;color:#7ff0d4;}
+  .stat span{font-size:10.5px;color:#8fbdd6;letter-spacing:.2px;}
+</style>
+</head>
+<body>
+
+<canvas id="gl"></canvas>
+<div class="vignette"></div>
+
+<div id="app">
+
+  <!-- ================= HUD ================= -->
+  <header class="hud">
+    <div class="hud-top">
+      <div class="brand"><span class="logo">🕌</span> Wudhu Quest</div>
+      <button id="btnReset" class="ghost-mini">⟲ Reset</button>
+    </div>
+    <div class="chips" id="chips"></div>
+  </header>
+
+  <!-- ================= HOME ================= -->
+  <section id="scr-home" class="screen active">
+    <div class="card">
+      <div class="hero-icon">💧</div>
+      <h1>Wudhu Quest</h1>
+      <p class="sub">Gamifikasi Khutbah Jum'at — Materi <b>Bersuci dengan Wudhu</b> untuk Pemula</p>
+
+      <div class="steps">
+        <div class="step"><b>1</b><span>Jawab <b>10 soal kuis</b> selagi menunggu khatib berwudhu.</span></div>
+        <div class="step"><b>2</b><span>Jalankan <b>6 rukun wudhu</b> satu per satu dengan benar.</span></div>
+        <div class="step"><b>3</b><span>Baca <b>doa</b> &amp; raih <b>badge</b> Rukun Wudhu Sempurna.</span></div>
+      </div>
+
+      <p class="note">⚠️ <b>Aturan main:</b> jika jawaban salah, <b>khatib tidak melanjutkan rukun berikutnya</b> — kamu harus mengulang sampai benar.</p>
+
+      <button class="btn primary" id="btnMulai">▶ Mulai Berwudhu</button>
+      <button class="btn ghost" id="btnLanjut" style="display:none">↻ Lanjutkan Progres</button>
+    </div>
+  </section>
+
+  <!-- ================= QUIZ ================= -->
+  <section id="scr-quiz" class="screen">
+    <div class="card">
+      <div class="q-head">
+        <span class="pill">Soal <b id="qNum">1</b>/10</span>
+        <span class="pill">Benar <b id="qScore">0</b></span>
+      </div>
+      <div class="progress"><i id="qBar"></i></div>
+      <p class="q-text" id="qText">—</p>
+      <div class="options" id="qOptions"></div>
+      <div class="feedback" id="qFeedback"></div>
+    </div>
+  </section>
+
+  <!-- ================= RUKUN ================= -->
+  <section id="scr-rukun" class="screen">
+    <div class="card">
+      <div class="q-head">
+        <span class="pill">Rukun <b id="rNum">1</b>/6</span>
+        <span class="pill" id="rName">Niat</span>
+      </div>
+      <h2 id="rTitle">—</h2>
+      <p class="perintah" id="rPerintah">—</p>
+      <div class="prog-line" id="rProg"></div>
+      <div id="rArea"></div>
+      <div class="feedback" id="rFeedback"></div>
+    </div>
+  </section>
+
+  <!-- ================= DOA ================= -->
+  <section id="scr-doa" class="screen">
+    <div class="card">
+      <h2>🤲 Doa Setelah Wudhu</h2>
+      <p class="sub" style="margin-bottom:0">Semua rukun wudhu telah sempurna. Sempurnakan dengan doa.</p>
+      <p class="arab" id="doaArab"></p>
+      <p class="latin" id="doaLatin"></p>
+      <p class="arti" id="doaArti"></p>
+      <button class="btn primary" id="btnAamiin">🤲 Aamiin — Selesaikan Wudhu</button>
+    </div>
+  </section>
+
+  <!-- ================= BADGE ================= -->
+  <section id="scr-badge" class="screen">
+    <div class="card center">
+      <div class="badge-big">💧</div>
+      <h2>Alhamdulillah! 🎉</h2>
+      <p class="sub" style="margin-bottom:2px">Kamu berhasil meraih badge</p>
+      <div class="badge-name">RUKUN WUDHU SEMPURNA<br><small>1 KALI PELAKSANAAN</small></div>
+      <div class="stats" id="badgeStats"></div>
+      <button class="btn primary" id="btnUlang">↻ Latihan Lagi</button>
+    </div>
+  </section>
+
+</div>
+
+<!-- ================== DATA JSON ================== -->
+<script type="application/json" id="data-json">
+{
+  "quiz": [
+    {
+      "soal": "Sebelum shalat, hukum berwudhu bagi orang yang berhadats kecil adalah…",
+      "opsi": ["Sunnah", "Wajib", "Makruh", "Mubah"],
+      "jawaban": 1,
+      "penjelasan": "Wudhu wajib sebelum shalat, thawaf, dan menyentuh mushaf Al-Qur'an."
+    },
+    {
+      "soal": "Air yang sah digunakan untuk berwudhu adalah…",
+      "opsi": ["Air kopi", "Air kelapa", "Air mutlak (suci dan mensucikan)", "Air sabun"],
+      "jawaban": 2,
+      "penjelasan": "Air mutlak adalah air yang masih asli, tidak berubah warna, rasa, dan baunya."
+    },
+    {
+      "soal": "Rukun wudhu yang pertama adalah…",
+      "opsi": ["Membasuh wajah", "Niat", "Membasuh tangan", "Mengusap kepala"],
+      "jawaban": 1,
+      "penjelasan": "Niat dilakukan di dalam hati, bersamaan dengan membasuh wajah."
+    },
+    {
+      "soal": "Anggota tubuh yang dibasuh setelah wajah adalah…",
+      "opsi": ["Kepala", "Kaki", "Kedua tangan sampai siku", "Telinga"],
+      "jawaban": 2,
+      "penjelasan": "Urutannya: wajah → kedua tangan sampai siku → usap kepala → kedua kaki."
+    },
+    {
+      "soal": "Jumlah basuhan yang disunnahkan ketika membasuh wajah adalah…",
+      "opsi": ["1 kali", "2 kali", "3 kali", "7 kali"],
+      "jawaban": 2,
+      "penjelasan": "Yang wajib sekali, yang sunnah tiga kali."
+    },
+    {
+      "soal": "Membasuh kedua kaki dalam wudhu dilakukan sampai…",
+      "opsi": ["Lutut", "Mata kaki", "Betis", "Paha"],
+      "jawaban": 1,
+      "penjelasan": "Kedua kaki dibasuh hingga mata kaki, termasuk sela-sela jari."
+    },
+    {
+      "soal": "Sunnah yang dilakukan saat memulai wudhu adalah membaca…",
+      "opsi": ["Ta'awudz", "Bismillah", "Tahmid", "Takbir"],
+      "jawaban": 1,
+      "penjelasan": "Membaca 'Bismillah' saat memulai wudhu adalah sunnah."
+    },
+    {
+      "soal": "Yang TIDAK termasuk hal yang membatalkan wudhu adalah…",
+      "opsi": ["Buang angin", "Tidur nyenyak", "Buang air kecil", "Makan nasi"],
+      "jawaban": 3,
+      "penjelasan": "Makan tidak membatalkan wudhu, kecuali makan daging unta menurut sebagian ulama."
+    },
+    {
+      "soal": "Setelah selesai berwudhu, kita disunnahkan membaca…",
+      "opsi": ["Doa setelah wudhu (syahadat)", "Doa iftitah", "Doa qunut", "Doa makan"],
+      "jawaban": 0,
+      "penjelasan": "Doa setelah wudhu berisi syahadat dan permohonan agar termasuk orang yang bersuci."
+    },
+    {
+      "soal": "Rukun wudhu yang terakhir adalah…",
+      "opsi": ["Tertib", "Niat", "Mengusap kepala", "Membasuh kaki"],
+      "jawaban": 0,
+      "penjelasan": "Tertib artinya mengerjakan seluruh rukun wudhu secara berurutan."
+    }
+  ],
+
+  "rukun": [
+    {
+      "id": 1,
+      "nama": "Niat",
+      "ikon": "🤲",
+      "tipe": "pilih",
+      "perintah": "Pilih lafaz NIAT wudhu yang benar.",
+      "opsi": [
+        { "teks": "Nawaitul wudhu'a liraf'il hadatsil ashghari fardhal lillahi ta'ala", "benar": true },
+        { "teks": "Nawaitul wudhu'a liraf'il hadatsil akbari sunnatan lillahi ta'ala", "benar": false },
+        { "teks": "Nawaitus shalata liraf'il hadatsil ashghari lillahi ta'ala", "benar": false }
+      ],
+      "info": "Niat letaknya di dalam hati dan dilakukan bersamaan dengan membasuh wajah."
+    },
+    {
+      "id": 2,
+      "nama": "Membasuh Wajah",
+      "ikon": "💦",
+      "tipe": "tap",
+      "perintah": "Ketuk area WAJAH sebanyak 3 kali untuk membasuhnya.",
+      "urutan": ["wajah", "wajah", "wajah"],
+      "info": "Basuh wajah dari dahi hingga dagu secara rata dengan air."
+    },
+    {
+      "id": 3,
+      "nama": "Membasuh Kedua Tangan",
+      "ikon": "🤚",
+      "tipe": "tap",
+      "perintah": "Basuh TANGAN KANAN dahulu, lalu TANGAN KIRI sampai siku.",
+      "urutan": ["tanganKanan", "tanganKiri"],
+      "info": "Mulai dari tangan kanan hingga siku, lalu tangan kiri."
+    },
+    {
+      "id": 4,
+      "nama": "Mengusap Kepala",
+      "ikon": "✋",
+      "tipe": "tap",
+      "perintah": "Usap KEPALA dengan air satu kali.",
+      "urutan": ["kepala"],
+      "info": "Cukup sekali usapan, dari depan ke belakang lalu kembali ke depan."
+    },
+    {
+      "id": 5,
+      "nama": "Membasuh Kedua Kaki",
+      "ikon": "🦶",
+      "tipe": "tap",
+      "perintah": "Basuh KAKI KANAN lalu KAKI KIRI sampai mata kaki.",
+      "urutan": ["kakiKanan", "kakiKiri"],
+      "info": "Basuh sampai mata kaki, jangan lupa sela-sela jari kaki."
+    },
+    {
+      "id": 6,
+      "nama": "Tertib",
+      "ikon": "📋",
+      "tipe": "pilih",
+      "perintah": "Apa arti rukun 'TERTIB' dalam wudhu?",
+      "opsi": [
+        { "teks": "Melakukan rukun-rukun wudhu secara berurutan", "benar": true },
+        { "teks": "Melakukan wudhu sambil berdiri", "benar": false },
+        { "teks": "Membaca doa sesudah wudhu", "benar": false }
+      ],
+      "info": "Tertib = mengerjakan seluruh rukun sesuai urutannya."
+    }
+  ],
+
+  "doa": {
+    "arab": "أَشْهَدُ أَنْ لَا إِلَهَ إِلَّا اللهُ وَحْدَهُ لَا شَرِيكَ لَهُ، وَأَشْهَدُ أَنَّ مُحَمَّدًا عَبْدُهُ وَرَسُولُهُ. اللَّهُمَّ اجْعَلْنِي مِنَ التَّوَّابِينَ وَاجْعَلْنِي مِنَ الْمُتَطَهِّرِينَ. سُبْحَانَكَ اللَّهُمَّ وَبِحَمْدِكَ أَشْهَدُ أَنْ لَا إِلَهَ إِلَّا أَنْتَ أَسْتَغْفِرُكَ وَأَتُوبُ إِلَيْكَ",
+    "latin": "Asyhadu allaa ilaaha illallahu wahdahu laa syariika lahu, wa asyhadu anna Muhammadan 'abduhu wa rasuuluh. Allahummaj'alnii minat tawwaabiina waj'alnii minal mutathahhiriin. Subhaanakallahumma wa bihamdika asyhadu allaa ilaaha illaa anta astaghfiruka wa atuubu ilaika.",
+    "arti": "Aku bersaksi bahwa tiada Tuhan selain Allah, Yang Maha Esa, tiada sekutu bagi-Nya. Dan aku bersaksi bahwa Muhammad adalah hamba dan Rasul-Nya. Ya Allah, jadikanlah aku termasuk orang-orang yang bertaubat dan jadikanlah aku termasuk orang-orang yang bersuci. Maha Suci Engkau ya Allah dan segala puji bagi-Mu, aku bersaksi tiada Tuhan selain Engkau, aku memohon ampun dan bertaubat kepada-Mu."
+  }
+}
+</script>
+
+<!-- ================== THREE.JS (WebGL) ================== -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<!-- ================== APP LOGIC ================== -->
+<script>
+(function () {
+  'use strict';
+
+  /* ============ DATA ============ */
+  const DATA = JSON.parse(document.getElementById('data-json').textContent);
+  const KEY = 'wudhuQuest.v1';
+
+  const DEFAULT_STATE = {
+    quizIndex: 0,
+    quizBenar: 0,
+    quizSalah: 0,
+    rukunIndex: 0,
+    badges: [],
+    doaDone: false,
+    selesai: false
+  };
+
+  /* ============ PENYIMPANAN JSON (localStorage) ============ */
+  let state = loadState();
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (!raw) return JSON.parse(JSON.stringify(DEFAULT_STATE));
+      return Object.assign(JSON.parse(JSON.stringify(DEFAULT_STATE)), JSON.parse(raw));
+    } catch (e) {
+      return JSON.parse(JSON.stringify(DEFAULT_STATE));
+    }
+  }
+  function saveState() {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+  }
+
+  /* ============ HELPERS ============ */
+  const $ = function (s) { return document.querySelector(s); };
+  const $$ = function (s) { return Array.prototype.slice.call(document.querySelectorAll(s)); };
+
+  const LABEL = {
+    kepala: 'Kepala', wajah: 'Wajah',
+    tanganKanan: 'Tangan Kanan', tanganKiri: 'Tangan Kiri',
+    kakiKanan: 'Kaki Kanan', kakiKiri: 'Kaki Kiri'
+  };
+  function labelOf(k) { return LABEL[k] || k; }
+
+  let lock = false;
+  let tapStep = 0;
+
+  /* ============ NAVIGASI ============ */
+  function show(id) {
+    $$('.screen').forEach(function (s) {
+      s.classList.toggle('active', s.id === 'scr-' + id);
+    });
+    window.scrollTo(0, 0);
+  }
+
+  function updateHud() {
+    const chips = DATA.rukun.map(function (r) {
+      const done = state.badges.indexOf(r.id) !== -1;
+      return '<span class="chip ' + (done ? 'on' : '') + '">' + (done ? '✓' : r.id) + '</span>';
+    });
+    chips.push('<span class="chip ' + (state.doaDone ? 'on' : '') + '">' + (state.doaDone ? '✓' : '🤲') + '</span>');
+    $('#chips').innerHTML = chips.join('');
+  }
+
+  function updateHome() {
+    const adaProgres = state.quizIndex > 0 || state.rukunIndex > 0 || state.selesai;
+    $('#btnLanjut').style.display = adaProgres ? 'block' : 'none';
+  }
+
+  /* ============================================================
+     TAHAP 1 — KUIS (selagi menunggu khatib berwudhu)
+     ============================================================ */
+  function renderQuiz() {
+    show('quiz');
+    lock = false;
+
+    if (state.quizIndex >= DATA.quiz.length) { goRukun(); return; }
+
+    const q = DATA.quiz[state.quizIndex];
+    $('#qNum').textContent = state.quizIndex + 1;
+    $('#qScore').textContent = state.quizBenar;
+    $('#qBar').style.width = (state.quizIndex / DATA.quiz.length * 100) + '%';
+    $('#qText').textContent = q.soal;
+    $('#qFeedback').innerHTML = '';
+
+    $('#qOptions').innerHTML = q.opsi.map(function (o, i) {
+      return '<button class="opt" data-i="' + i + '">' + o + '</button>';
+    }).join('');
+
+    $$('#qOptions .opt').forEach(function (b) {
+      b.addEventListener('click', function () { jawabQuiz(parseInt(b.dataset.i, 10), b); });
+    });
+
+    updateHud();
+  }
+
+  function jawabQuiz(i, btn) {
+    if (lock) return;
+    const q = DATA.quiz[state.quizIndex];
+
+    if (i === q.jawaban) {
+      /* ---- BENAR: khatib melanjutkan rukun ---- */
+      lock = true;
+      btn.classList.add('benar');
+      state.quizBenar++;
+      saveState();
+      $('#qScore').textContent = state.quizBenar;
+      $('#qFeedback').innerHTML = '<div class="fb ok">✅ Benar! Khatib melanjutkan ke rukun berikutnya…</div>';
+
+      setTimeout(function () {
+        state.quizIndex++;
+        saveState();
+        updateHud();
+        updateHome();
+        if (state.quizIndex >= DATA.quiz.length) goRukun();
+        else renderQuiz();
+      }, 1050);
+
+    } else {
+      /* ---- SALAH: khatib BERHENTI, wajib ulang ---- */
+      lock = true;
+      btn.classList.add('salah');
+      const benarBtn = $$('#qOptions .opt')[q.jawaban];
+      if (benarBtn) benarBtn.classList.add('benar');
+
+      state.quizSalah++;
+      saveState();
+
+      $('#qFeedback').innerHTML =
+        '<div class="fb bad">❌ Jawaban salah! <b>Khatib tidak melanjutkan rukun.</b>' +
+        '<small>' + q.penjelasan + '</small></div>' +
+        '<button class="btn warn" id="btnUlangiSoal" style="margin-top:10px">↻ Ulangi Soal ' + (state.quizIndex + 1) + '</button>';
+
+      $('#btnUlangiSoal').addEventListener('click', function () {
+        lock = false;
+        renderQuiz();
+      });
+    }
+  }
+
+  /* ============================================================
+     TAHAP 2 — RUKUN WUDHU
+     ============================================================ */
+  function goRukun() {
+    state.rukunIndex = 0;
+    saveState();
+    renderRukun();
+  }
+
+  function renderRukun() {
+    if (state.rukunIndex >= DATA.rukun.length) { goDoa(); return; }
+    show('rukun');
+    lock = false;
+    tapStep = 0;
+
+    const r = DATA.rukun[state.rukunIndex];
+    $('#rNum').textContent = r.id;
+    $('#rName').textContent = r.nama;
+    $('#rTitle').textContent = r.ikon + '  ' + r.nama;
+    $('#rPerintah').textContent = r.perintah;
+    $('#rProg').textContent = '';
+    $('#rFeedback').innerHTML = '';
+    $('#rArea').innerHTML = '';
+
+    if (r.tipe === 'tap') renderTapRukun(r);
+    else renderPilihRukun(r);
+
+    updateHud();
+  }
+
+  /* ---- Rukun tipe "pilih" ---- */
+  function renderPilihRukun(r) {
+    $('#rArea').innerHTML = '<div class="options">' + r.opsi.map(function (o, i) {
+      return '<button class="opt" data-i="' + i + '">' + o.teks + '</button>';
+    }).join('') + '</div>';
+
+    $$('#rArea .opt').forEach(function (b) {
+      b.addEventListener('click', function () {
+        if (lock) return;
+        const i = parseInt(b.dataset.i, 10);
+        if (r.opsi[i].benar) {
+          lock = true;
+          b.classList.add('benar');
+          suksesRukun(r);
+        } else {
+          lock = true;
+          b.classList.add('salah');
+          gagalRukun(r, 'Lafaz / pilihan itu belum tepat.');
+        }
+      });
+    });
+  }
+
+  /* ---- Rukun tipe "tap" (peta anggota tubuh) ---- */
+  const PARTS = [
+    { k: 'kepala',      e: '👳', l: 'Kepala',       wide: true },
+    { k: 'wajah',       e: '😊', l: 'Wajah',        wide: true },
+    { k: 'tanganKanan', e: '🤚', l: 'Tangan Kanan', wide: false },
+    { k: 'tanganKiri',  e: '🖐️', l: 'Tangan Kiri',  wide: false },
+    { k: 'kakiKanan',   e: '🦶', l: 'Kaki Kanan',   wide: false },
+    { k: 'kakiKiri',    e: '🦶', l: 'Kaki Kiri',    wide: false }
+  ];
+
+  function renderTapRukun(r) {
+    $('#rArea').innerHTML = '<div class="body-map">' + PARTS.map(function (p) {
+      return '<button class="part ' + (p.wide ? 'wide' : '') + '" data-k="' + p.k + '">' +
+             '<span class="emo">' + p.e + '</span>' + p.l + '</button>';
+    }).join('') + '</div>';
+
+    $$('#rArea .part').forEach(function (b) {
+      b.addEventListener('click', function () { onTap(b.dataset.k, r, b); });
+    });
+
+    updateTapProgress(r);
+  }
+
+  function onTap(key, r, btn) {
+    if (lock) return;
+    const need = r.urutan[tapStep];
+
+    if (key === need) {
+      /* langkah benar */
+      btn.classList.add('hit');
+      setTimeout(function () { btn.classList.remove('hit'); }, 320);
+      tapStep++;
+      updateTapProgress(r);
+
+      if (tapStep >= r.urutan.length) {
+        lock = true;
+        btn.classList.add('ok');
+        suksesRukun(r);
+      }
+    } else {
+      /* langkah salah -> khatib berhenti */
+      lock = true;
+      btn.classList.add('wrong');
+      gagalRukun(r,
+        'Kamu menyentuh <b>' + labelOf(key) + '</b>, padahal urutannya: <b>' +
+        r.urutan.map(labelOf).join(' → ') + '</b>.');
+    }
+  }
+
+  function updateTapProgress(r) {
+    if (tapStep === 0) { $('#rProg').textContent = 'Belum ada yang dibasuh'; return; }
+    const counts = {};
+    r.urutan.slice(0, tapStep).forEach(function (k) { counts[k] = (counts[k] || 0) + 1; });
+    $('#rProg').textContent = Object.keys(counts).map(function (k) {
+      return labelOf(k) + ' ' + counts[k] + '×';
+    }).join('  •  ');
+  }
+
+  /* ---- Sukses / gagal rukun ---- */
+  function suksesRukun(r) {
+    if (state.badges.indexOf(r.id) === -1) state.badges.push(r.id);
+    saveState();
+    updateHud();
+
+    $('#rFeedback').innerHTML =
+      '<div class="fb ok">✅ Rukun <b>' + r.nama + '</b> sempurna! ' +
+      '🏅 Badge Rukun ke-' + r.id + ' diterima.</div>' +
+      '<p class="info">' + r.info + '</p>';
+
+    setTimeout(function () {
+      state.rukunIndex++;
+      saveState();
+      updateHome();
+      lock = false;
+      if (state.rukunIndex >= DATA.rukun.length) goDoa();
+      else renderRukun();
+    }, 1700);
+  }
+
+  function gagalRukun(r, msg) {
+    $('#rFeedback').innerHTML =
+      '<div class="fb bad">❌ ' + msg + '<br><b>Khatib berhenti!</b> Rukun tidak dilanjutkan — ulangi rukun ini dari awal.</div>' +
+      '<button class="btn warn" id="btnUlangiRukun" style="margin-top:10px">↻ Ulangi Rukun ' + r.id + ' — ' + r.nama + '</button>';
+
+    $('#btnUlangiRukun').addEventListener('click', function () {
+      lock = false;
+      renderRukun();
+    });
+  }
+
+  /* ============================================================
+     TAHAP 3 — DOA
+     ============================================================ */
+  function goDoa() {
+    show('doa');
+    $('#doaArab').textContent = DATA.doa.arab;
+    $('#doaLatin').textContent = DATA.doa.latin;
+    $('#doaArti').textContent = DATA.doa.arti;
+    updateHud();
+  }
+
+  /* ============================================================
+     TAHAP 4 — BADGE
+     ============================================================ */
+  function renderBadge() {
+    show('badge');
+    updateHud();
+
+    $('#badgeStats').innerHTML =
+      '<div class="stat"><b>' + DATA.quiz.length + '</b><span>Soal Kuis</span></div>' +
+      '<div class="stat"><b>' + state.quizBenar + '</b><span>Jawaban Benar</span></div>' +
+      '<div class="stat"><b>' + state.quizSalah + '</b><span>Kali Salah</span></div>' +
+      '<div class="stat"><b>' + state.badges.length + '/6</b><span>Badge Rukun</span></div>';
+  }
+
+  /* ============================================================
+     EVENT BINDING
+     ============================================================ */
+  $('#btnMulai').addEventListener('click', function () {
+    state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+    saveState();
+    updateHud();
+    updateHome();
+    renderQuiz();
+  });
+
+  $('#btnLanjut').addEventListener('click', function () {
+    if (state.selesai) { renderBadge(); return; }
+    if (state.quizIndex >= DATA.quiz.length) renderRukun();
+    else renderQuiz();
+  });
+
+  $('#btnAamiin').addEventListener('click', function () {
+    state.doaDone = true;
+    state.selesai = true;
+    saveState();
+    renderBadge();
+  });
+
+  $('#btnUlang').addEventListener('click', function () {
+    state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+    saveState();
+    updateHud();
+    updateHome();
+    show('home');
+    updateHome();
+  });
+
+  $('#btnReset').addEventListener('click', function () {
+    state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+    saveState();
+    updateHud();
+    updateHome();
+    show('home');
+  });
+
+  /* ============================================================
+     WEBGL — Latar air (Three.js)
+     ============================================================ */
+  function initWebGL() {
+    if (!window.THREE) return false;
+
+    const canvas = document.getElementById('gl');
+    let renderer;
+    try {
+      renderer = new THREE.WebGLRenderer({
+        canvas: canvas, alpha: true, antialias: false, powerPreference: 'low-power'
+      });
+    } catch (e) { return false; }
+    if (!renderer || !renderer.getContext()) return false;
+
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight, false);
+    renderer.setClearColor(0x000000, 0);
+
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x04121c, 0.026);
+
+    const camera = new THREE.PerspectiveCamera(58, window.innerWidth / window.innerHeight, 0.1, 200);
+    camera.position.set(0, 0, 18);
+
+    scene.add(new THREE.AmbientLight(0x9fd8ff, 0.55));
+
+    const l1 = new THREE.PointLight(0x6fe3ff, 1.6, 140);
+    l1.position.set(9, 14, 12); scene.add(l1);
+
+    const l2 = new THREE.PointLight(0x2f7bff, 1.1, 140);
+    l2.position.set(-11, -9, 8); scene.add(l2);
+
+    const geo = new THREE.SphereGeometry(1, 12, 12);
+    const mat = new THREE.MeshStandardMaterial({
+      color: 0x7fe6ff, emissive: 0x0d3a52,
+      metalness: 0.35, roughness: 0.12,
+      transparent: true, opacity: 0.85
+    });
+
+    const drops = [];
+    const N = 62;
+
+    function resetDrop(m, initial) {
+      m.position.x = (Math.random() - 0.5) * 34;
+      m.position.z = (Math.random() - 0.5) * 16 - 6;
+      m.position.y = initial ? (Math.random() * 36 - 18) : (18 + Math.random() * 10);
+      m.userData.vy = 0.045 + Math.random() * 0.11;
+      m.userData.ph = Math.random() * Math.PI * 2;
+      const sc = 0.06 + Math.random() * 0.13;
+      m.scale.set(sc, sc * 1.4, sc);
+    }
+
+    for (let i = 0; i < N; i++) {
+      const m = new THREE.Mesh(geo, mat);
+      resetDrop(m, true);
+      scene.add(m);
+      drops.push(m);
+    }
+
+    let t = 0;
+    (function animate() {
+      requestAnimationFrame(animate);
+      t += 0.016;
+      for (let i = 0; i < drops.length; i++) {
+        const d = drops[i];
+        d.position.y -= d.userData.vy;
+        d.position.x += Math.sin(t * 1.2 + d.userData.ph) * 0.012;
+        if (d.position.y < -18) resetDrop(d, false);
+      }
+      camera.position.x = Math.sin(t * 0.15) * 1.6;
+      camera.lookAt(0, 0, 0);
+      renderer.render(scene, camera);
+    })();
+
+    window.addEventListener('resize', function () {
+      renderer.setSize(window.innerWidth, window.innerHeight, false);
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+    });
+
+    return true;
+  }
+
+  /* ============================================================
+     INIT
+     ============================================================ */
+  initWebGL();
+  updateHud();
+  updateHome();
+
+  // Kalau ada progres tersimpan, tawarkan lanjut
+  if (state.quizIndex > 0 || state.rukunIndex > 0 || state.selesai) {
+    $('#btnLanjut').style.display = 'block';
+  }
+
+})();
+</script>
+</body>
+</html>
+```
+### Cara Kerja & Mekanisme Gamifikasi
+
+Alur belajarnya dibuat seperti simulasi khatib berwudhu, jadi setiap jawaban memengaruhi kelanjutan cerita.
+
+- **Kuis 10 Soal**: Setiap jawaban benar menambah skor, sedangkan jawaban salah menghentikan khatib dan menampilkan tombol “Ulangi Soal”. Ini memaksa pemain memahami materi sebelum lanjut.
+- **Rukun Wudhu**: Ada 6 rukun dengan dua tipe interaksi, yaitu memilih lafaz niat dan mengetuk area tubuh sesuai urutan. Jika salah, khatib berhenti dan rukun diulang.
+- **Sistem Badge**: Setiap rukun yang sempurna memberi badge kecil, dan setelah doa selesai, badge utama “Rukun Wudhu Sempurna 1 Kali Pelaksanaan” muncul.
+- **Penyimpanan JSON**: Progres disimpan di localStorage dalam format JSON, jadi bisa dilanjutkan kapan saja.
+- **Tampilan Mobile & WebGL**: Latar air bergerak dibuat dengan Three.js, dan antarmuka dioptimalkan untuk layar ponsel.
+---
+
+**Optimasi:** Anda bisa mengubah isi soal, urutan rukun, atau doa dengan mengedit objek JSON di dalam tag `<script id="data-json">`. Cukup sesuaikan teks dan kunci jawaban, lalu simpan.
